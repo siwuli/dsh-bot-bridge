@@ -57,6 +57,9 @@ DSH 的 Web GUI /api 走浏览器会话（Cookie），且内部 RPC（session.cr
         maxStreamMs: 1800000                   # 单条 SSE 最长存活时间
         maxPromptChars: 20000                  # 单条提示词长度上限
         maxHistoryItems: 50                    # 历史接口返回的最大条数
+        defaultModelProvider: 'deepseek'       # 可选: 新建会话的模型 provider
+        defaultModelName: 'deepseek-chat'      # 可选: 新建会话的模型 id
+        defaultReasoningEffort: ''             # 可选: 思考强度 (如 low/medium/high)
         storageFile: '~/.dsh/storages/dsh-bot-bridge.json'
         loopbackOnly: false                    # true 时仅允许 127.0.0.1 访问
 
@@ -87,6 +90,17 @@ DSH 的 Web GUI /api 走浏览器会话（Cookie），且内部 RPC（session.cr
     { "type": "error",  "message": "…" }
     { "type": "done",   "sessionId": "…", "reason": "timeout|agent-error|prompt-rejected" }
 
+请求还支持工作区/模型选择（只在**新建会话**时生效）：
+
+    {
+      "clientId": "qq:123456",
+      "text": "帮我看看仓库状态",
+      "workspacePath": "/data/workspace-a",   // 可选: 新建会话的工作目录
+      "modelProvider": "deepseek",            // 可选: 新建会话的模型 provider
+      "modelName": "deepseek-reasoner",       // 可选: 新建会话的模型 id
+      "reasoningEffort": "high"               // 可选: 思考强度
+    }
+
 done 判定：本提示词引发的 turn 全部结束且 Agent 进入 idle，静默 doneQuietMs 后收尾；期间出现 question/approval 会挂起等待应答，Agent 重新 running 会取消倒计时。
 
 ### POST /api/bot/answer
@@ -111,6 +125,20 @@ outcome: allowed-once（放行一次）或 rejected（拒绝）。
 ### GET /api/bot/history?sessionId=…&limit=50
 
 返回该会话最近的用户/助手文本（默认排除 thinking），供"查看最近结果"。
+
+### GET /api/bot/workspaces
+
+列出 DSH 当前注册的工作区：[{workspaceId, path, title}]，供机器人端"选择工作区"。
+
+### GET /api/bot/models
+
+列出模型目录：groups（provider → models[id/name]）与 failures，供机器人端"选择模型"。
+
+### POST /api/bot/model
+
+    { "sessionId": "…", "provider": "deepseek", "model": "deepseek-reasoner", "reasoningEffort": "high" }
+
+给**现有会话**切换模型（reasoningEffort 可选）。
 
 ### GET /api/bot/session?clientId=…、POST /api/bot/reset、GET /api/bot/health
 
@@ -140,4 +168,5 @@ DSH 仍只监听回环。也可以在机器人同机部署一套 DSH。公网暴
 
 ## 版本历史
 
+- v0.2.0: 新增工作区列表 / 模型目录 / 会话切模型端点，prompt 新建会话支持 workspacePath + modelProvider/modelName/reasoningEffort。
 - v0.1.0: 首个版本（/api/bot/* 桥接 API、SSE 非思考流、提问/授权/停止应答、clientId 会话绑定、mock 集成测试）。

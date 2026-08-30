@@ -65,7 +65,7 @@ function makeEnv(config) {
   };
 
   const state = {
-    createCalls: [], promptCalls: [], historyCalls: [], respondCalls: [], cancelCalls: [],
+    createCalls: [], promptCalls: [], historyCalls: [], respondCalls: [], cancelCalls: [], selectModelCalls: [],
     queues: [], sessionSeq: 0,
   };
   const api = {
@@ -83,6 +83,10 @@ function makeEnv(config) {
         state.cancelCalls.push(request.payload);
         return { rpcId: request.rpcId, result: { ok: true, value: { accepted: true } } };
       },
+      async selectModel(request) {
+        state.selectModelCalls.push(request.payload);
+        return { rpcId: request.rpcId, result: { ok: true, value: { selected: { provider: request.payload.provider, model: request.payload.model } } } };
+      },
       async history(request) {
         state.historyCalls.push(request.payload);
         return {
@@ -99,6 +103,16 @@ function makeEnv(config) {
             ],
           } },
         };
+      },
+    },
+    workspace: {
+      async list(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { items: [{ workspaceId: 'w1', path: '/data/w1', title: 'W1' }], archivedSessionIds: [] } } };
+      },
+    },
+    llm: {
+      async models(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { groups: [{ id: 'deepseek', name: 'DeepSeek', models: [{ id: 'deepseek-chat', name: 'DeepSeek Chat' }] }], failures: [] } } };
       },
     },
     events: {
@@ -217,12 +231,15 @@ console.log('✓ 1. health 令牌门禁');
 
 // ---- 2. prompt: 创建会话 + 非思考 SSE 流 ----
 {
-  const req = jsonPost('/api/bot/prompt', { clientId: 'qq:1', text: '你好' });
+  const req = jsonPost('/api/bot/prompt', { clientId: 'qq:1', text: '你好', modelProvider: 'deepseek', modelName: 'deepseek-chat' });
   const res = fakeRes();
   const done = env.webServer.match('/api/bot/prompt').handler(req, res);
   await waitUntil(() => env.state.promptCalls.length === 1);
   assert.strictEqual(env.state.createCalls.length, 1);
   assert.deepStrictEqual(env.state.promptCalls[0].content, [{ type: 'text', text: '你好' }]);
+  await waitUntil(() => env.state.selectModelCalls.length === 1);
+  assert.strictEqual(env.state.selectModelCalls[0].sessionId, 'session-1');
+  assert.strictEqual(env.state.selectModelCalls[0].model, 'deepseek-chat');
   const q = env.state.queues[0];
   const sid = env.state.promptCalls[0].sessionId;
   q.push({ rpcId: 'r1', payload: { type: 'session/event', sessionId: sid, event: { type: 'assistant/chunk', seq: 1, time: 1, data: { turn: 1, step: 1, chunk: { type: 'reasoning-delta', index: 0, text: '内心思考' } } } } });
@@ -322,6 +339,30 @@ console.log('✓ 1. health 令牌门禁');
   assert.strictEqual(r.status, 200);
   assert.strictEqual(env.state.cancelCalls.length, 1);
   console.log('✓ 6b. cancel 端点');
+}
+
+// ---- 6c. 工作区列表 ----
+{
+  r = await dispatch(env, fakeReq({ url: '/api/bot/workspaces', headers: authHeaders }));
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(JSON.parse(r.body).items[0].workspaceId, 'w1');
+  console.log('✓ 6c. 工作区列表端点');
+}
+
+// ---- 6d. 模型目录 ----
+{
+  r = await dispatch(env, fakeReq({ url: '/api/bot/models', headers: authHeaders }));
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(JSON.parse(r.body).groups[0].models[0].id, 'deepseek-chat');
+  console.log('✓ 6d. 模型目录端点');
+}
+
+// ---- 6e. 会话切模型 ----
+{
+  r = await dispatch(env, jsonPost('/api/bot/model', { sessionId: 'session-1', provider: 'deepseek', model: 'deepseek-reasoner', reasoningEffort: 'high' }));
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(env.state.selectModelCalls.at(-1).reasoningEffort, 'high');
+  console.log('✓ 6e. 会话切模型端点');
 }
 
 // ---- 7. reset + session 查询 ----
