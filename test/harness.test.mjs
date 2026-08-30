@@ -65,7 +65,7 @@ function makeEnv(config) {
   };
 
   const state = {
-    createCalls: [], promptCalls: [], historyCalls: [], respondCalls: [], cancelCalls: [], selectModelCalls: [],
+    createCalls: [], promptCalls: [], historyCalls: [], respondCalls: [], cancelCalls: [], selectModelCalls: [], workspaceCreateCalls: [],
     queues: [], sessionSeq: 0, persistedCwds: {},
   };
   const api = {
@@ -108,6 +108,10 @@ function makeEnv(config) {
     workspace: {
       async list(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { items: [{ workspaceId: 'w1', path: '/data/w1', title: 'W1' }], archivedSessionIds: [] } } };
+      },
+      async create(request) {
+        state.workspaceCreateCalls.push(request.payload);
+        return { rpcId: request.rpcId, result: { ok: true, value: { workspace: { workspaceId: 'w-' + (state.workspaceCreateCalls.length), path: request.payload.path, title: 'T' }, created: true } } };
       },
     },
     llm: {
@@ -421,7 +425,8 @@ console.log('✓ 1. health 令牌门禁');
   done = env.webServer.match('/api/bot/prompt').handler(req, res);
   await waitUntil(() => env.state.createCalls.length === 5);
   const createdPayload = env.state.createCalls[4];
-  assert.strictEqual(createdPayload.cwd, 'D:/Projects', '换绑新会话应带新工作区');
+  assert.strictEqual(createdPayload.workspaceId, 'w-1', '换绑新会话应挂到 DSH 工作区');
+  assert.strictEqual(createdPayload.cwd, undefined);
   const newId = 'session-' + env.state.sessionSeq;
   q = env.state.queues.at(-1);
   await finishTurn(env, res, q, newId, 'MARK7B2');

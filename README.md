@@ -90,7 +90,7 @@ DSH 的 Web GUI /api 走浏览器会话（Cookie），且内部 RPC（session.cr
     { "type": "error",  "message": "…" }
     { "type": "done",   "sessionId": "…", "reason": "timeout|agent-error|prompt-rejected" }
 
-请求还支持工作区/模型选择（只在**新建会话**时生效）：
+请求还支持工作区/模型选择（只在**新建会话**时生效；工作区会自动注册/复用 DSH 工作区，会话会挂在该工作区项目下、在 Web GUI 可见）：
 
     {
       "clientId": "qq:123456",
@@ -172,6 +172,7 @@ DSH 仍只监听回环。也可以在机器人同机部署一套 DSH。公网暴
 
 ## 版本历史
 
+- v0.3.0: 新建会话自动注册/复用 DSH 工作区（workspace.create + workspaceId），会话在 Web GUI 工作区面板可见，换绑比较使用 canonical 路径。
 - v0.2.3: 工作区路径校验——相对路径直接返回 400 明确报错（不再落到 DSH 内部 502）。
 - v0.2.2: 会话绑定存储改为合并写+墓碑删除——多实例共享存储文件时旧进程不再覆盖新绑定，持续对话稳定复用同一会话（新会话只由显式 reset 触发）。
 - v0.2.1: 工作区自动换绑——绑定会话的工作目录与请求 workspacePath 不一致时自动解绑并新建会话（改配置即生效，无需手动重置）。

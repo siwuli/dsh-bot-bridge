@@ -1,6 +1,6 @@
 {
   "name": "dsh-bot-bridge",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "DSH host plugin: token-authenticated bot bridge API (/api/bot/*). Send prompts into DeepSeek Harness sessions over HTTP and stream the non-thinking output back as Server-Sent Events.",
   "keywords": [
     "dsh",
