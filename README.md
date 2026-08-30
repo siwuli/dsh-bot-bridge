@@ -172,6 +172,7 @@ DSH 仍只监听回环。也可以在机器人同机部署一套 DSH。公网暴
 
 ## 版本历史
 
+- v0.3.2: /api/bot/sessions 支持 workspacePath 查询参数，按工作区过滤会话列表。
 - v0.3.1: 新增 GET /api/bot/sessions（历史会话列表，过滤子代理）与 POST /api/bot/bind（clientId 绑定历史会话继续对话）。
 - v0.3.0: 新建会话自动注册/复用 DSH 工作区（workspace.create + workspaceId），会话在 Web GUI 工作区面板可见，换绑比较使用 canonical 路径。
 - v0.2.3: 工作区路径校验——相对路径直接返回 400 明确报错（不再落到 DSH 内部 502）。

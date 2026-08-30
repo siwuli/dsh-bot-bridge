@@ -91,6 +91,7 @@ function makeEnv(config) {
             value: {
               items: [
                 { sessionId: 'session-old-1', cwd: 'D:/old', updatedAt: 3, running: false, blank: false, projections: { values: { title: '老会话一' } } },
+                { sessionId: 'session-old-2', cwd: 'D:/other', updatedAt: 4, running: false, blank: false, projections: { values: { title: '别的目录' } } },
                 { sessionId: 'session-sub-1', cwd: 'D:/x', updatedAt: 2, running: false, blank: false, origin: 'subagent', projections: { values: { title: '子代理' } } },
               ],
             },
@@ -410,15 +411,20 @@ console.log('✓ 1. health 令牌门禁');
   console.log('✓ 6e. 会话切模型端点');
 }
 
-// ---- 6f. 会话列表 (过滤 subagent) ----
+// ---- 6f. 会话列表 (过滤 subagent + 可选按工作区过滤) ----
 {
   r = await dispatch(env, fakeReq({ url: '/api/bot/sessions', headers: authHeaders }));
   assert.strictEqual(r.status, 200);
-  const items = JSON.parse(r.body).items;
-  assert.strictEqual(items.length, 1);
+  let items = JSON.parse(r.body).items;
+  assert.strictEqual(items.length, 2, '默认返回全部非子代理会话');
+  r = await dispatch(env, fakeReq({ url: '/api/bot/sessions?workspacePath=D:/old', headers: authHeaders }));
+  items = JSON.parse(r.body).items;
+  assert.strictEqual(items.length, 1, '按工作区过滤后只剩该目录的会话');
   assert.strictEqual(items[0].sessionId, 'session-old-1');
   assert.strictEqual(items[0].title, '老会话一');
-  console.log('✓ 6f. 会话列表端点');
+  r = await dispatch(env, fakeReq({ url: '/api/bot/sessions?workspacePath=D:/nope', headers: authHeaders }));
+  assert.strictEqual(JSON.parse(r.body).items.length, 0);
+  console.log('✓ 6f. 会话列表端点 (支持 workspacePath 过滤)');
 }
 
 // ---- 6g. 绑定历史会话 ----
