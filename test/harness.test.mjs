@@ -66,7 +66,7 @@ function makeEnv(config) {
 
   const state = {
     createCalls: [], promptCalls: [], historyCalls: [], respondCalls: [], cancelCalls: [], selectModelCalls: [],
-    queues: [], sessionSeq: 0,
+    queues: [], sessionSeq: 0, persistedCwds: {},
   };
   const api = {
     sessions: {
@@ -132,7 +132,19 @@ function makeEnv(config) {
   const ctx = {
     webServer,
     apiProxy: api,
-    get: (name) => (name === 'apiProxy' ? api : undefined),
+    sessions: new Map(),
+    sessionPersistence: {
+      async inspect(sessionId) {
+        const cwd = state.persistedCwds[sessionId];
+        return cwd === undefined ? undefined : { meta: { cwd } };
+      },
+    },
+    get: (name) => {
+      if (name === 'apiProxy') return api;
+      if (name === 'sessions') return ctx.sessions;
+      if (name === 'sessionPersistence') return ctx.sessionPersistence;
+      return undefined;
+    },
     effect: (fn) => { const d = fn(); return d; },
     on(name, cb) {
       const list = handlers.get(name) ?? [];
@@ -372,6 +384,39 @@ console.log('✓ 1. health 令牌门禁');
   r = await dispatch(env, fakeReq({ url: '/api/bot/session?clientId=qq:1', headers: authHeaders }));
   assert.strictEqual(JSON.parse(r.body).sessionId, null);
   console.log('✓ 7. clientId 会话解绑/查询');
+}
+
+// ---- 7b. 工作区不一致时自动换绑新会话 ----
+{
+  // 第一步: qq:ws 不带工作区, 绑定旧会话 (cwd 记录为旧目录)
+  let req = jsonPost('/api/bot/prompt', { clientId: 'qq:ws', text: 'hi' });
+  let res = fakeRes();
+  let done = env.webServer.match('/api/bot/prompt').handler(req, res);
+  await waitUntil(() => env.state.createCalls.length === 4);
+  const oldId = 'session-' + env.state.sessionSeq;
+  env.state.persistedCwds[oldId] = 'D:\\work\\old';
+  let q = env.state.queues.at(-1);
+  await finishTurn(env, res, q, oldId, 'MARK7B1');
+  await done;
+  if (!res.writableFinished) await once(res, 'finish').catch(() => {});
+
+  // 第二步: 同 clientId 但工作区不同 → 应解绑并新建会话(带新工作区)
+  req = jsonPost('/api/bot/prompt', { clientId: 'qq:ws', text: '在工作区A干活', workspacePath: 'D:/Projects' });
+  res = fakeRes();
+  done = env.webServer.match('/api/bot/prompt').handler(req, res);
+  await waitUntil(() => env.state.createCalls.length === 5);
+  const createdPayload = env.state.createCalls[4];
+  assert.strictEqual(createdPayload.cwd, 'D:/Projects', '换绑新会话应带新工作区');
+  const newId = 'session-' + env.state.sessionSeq;
+  q = env.state.queues.at(-1);
+  await finishTurn(env, res, q, newId, 'MARK7B2');
+  await done;
+  if (!res.writableFinished) await once(res, 'finish').catch(() => {});
+  assert.ok(sseFrames(res.result.body).some((fr) => fr.type === 'done'));
+  // reset 端点返回的 forgotten 应为新会话 id
+  const rr2 = await dispatch(env, jsonPost('/api/bot/reset', { clientId: 'qq:ws' }));
+  assert.strictEqual(JSON.parse(rr2.body).forgotten, newId);
+  console.log('✓ 7b. 工作区不一致自动换绑新会话');
 }
 
 // ---- 8. 错误路径: 缺令牌 / 缺文本 / prompt 被拒 ----

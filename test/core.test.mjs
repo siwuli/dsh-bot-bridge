@@ -50,7 +50,13 @@ assert.strictEqual(toolBrief({ data: { name: 'bash' } }, null, 300), 'bash');
 assert.strictEqual(toolBrief({}, { view: { title: '运行命令 ls' } }, 300), '运行命令 ls');
 assert.strictEqual(toolBrief({}, null, 300), '');
 
-// 8. store 读写
+// 7b. 路径规范化
+const np = (await import('../lib/core.js')).normalizePath;
+assert.strictEqual(np('D:\\work\\old'), 'd:/work/old');
+assert.strictEqual(np('D:/Projects'), 'd:/Projects');
+assert.strictEqual(np('d:/Projects'), 'd:/Projects');
+assert.ok(np('D:\\work\\old') !== np('D:/Projects'));
+console.log('✓ 7b. 路径规范化');
 const tmp = path.join(os.tmpdir(), 'dsh-bot-bridge-test-' + Date.now() + '.json');
 saveStore(tmp, { 'qq:1': 's1' });
 assert.deepStrictEqual(loadStore(tmp), { 'qq:1': 's1' });

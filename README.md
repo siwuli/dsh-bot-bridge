@@ -172,5 +172,6 @@ DSH 仍只监听回环。也可以在机器人同机部署一套 DSH。公网暴
 
 ## 版本历史
 
+- v0.2.1: 工作区自动换绑——绑定会话的工作目录与请求 workspacePath 不一致时自动解绑并新建会话（改配置即生效，无需手动重置）。
 - v0.2.0: 新增工作区列表 / 模型目录 / 会话切模型端点，prompt 新建会话支持 workspacePath + modelProvider/modelName/reasoningEffort。
 - v0.1.0: 首个版本（/api/bot/* 桥接 API、SSE 非思考流、提问/授权/停止应答、clientId 会话绑定、mock 集成测试）。
