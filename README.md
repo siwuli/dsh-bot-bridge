@@ -40,7 +40,7 @@ DSH 的 Web GUI /api 走浏览器会话（Cookie），且内部 RPC（session.cr
     # 本地开发
     dsh plugin --profile <profile名> add link:<插件源码绝对路径>
 
-重启 dsh web 生效。
+重启 DSH 生效（例如 dsh --profile first）。
 
 ## 配置 (cordis patch)
 
@@ -117,9 +117,22 @@ outcome: allowed-once（放行一次）或 rejected（拒绝）。
 
 查询绑定会话 / 解绑（下次自动新建）/ 健康检查。
 
-## 远程访问注意
+## 网络拓扑
 
-机器人通常在另一台机器上：dsh web 需要绑定局域网（dsh web --host 0.0.0.0）或经隧道/反向代理暴露 3080 端口。bridge 自带令牌认证，公网暴露务必使用强令牌 + 有条件就配合 dsh-auth-session 或代理层。
+**默认（推荐）：DSH 与机器人后端同机** —— 无需任何网络配置，机器人直接访问
+http://127.0.0.1:3080，bridge 自带令牌认证。
+
+**跨机部署（可选）**：部分 DSH 版本的 CLI 出于安全禁止把 Web 服务绑定到
+0.0.0.0（例如 dsh web --host 0.0.0.0 会被拒绝），此时不要把 DSH 直接暴露到
+局域网，推荐用 SSH 反向隧道把 DSH 端口引到机器人所在机器：
+
+    # 在运行 DSH 的机器上执行（断线可配合 autossh/启动脚本自动重连）
+    ssh -N -R 13080:127.0.0.1:3080 <机器人机器用户>@<机器人机器IP> \
+        -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes
+
+机器人侧即可用 http://127.0.0.1:13080 访问 bridge，全程走 SSH 加密通道、
+DSH 仍只监听回环。也可以在机器人同机部署一套 DSH。公网暴露务必使用强令牌，
+有条件就配合 dsh-auth-session 或代理层。
 
 ## 开发与测试
 
