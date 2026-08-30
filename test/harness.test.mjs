@@ -456,6 +456,16 @@ console.log('✓ 1. health 令牌门禁');
   console.log('✓ 7c. 多实例存储合并写, 绑定不丢失');
 }
 
+// ---- 7d. 相对工作区路径 → 400 (不落到 502) ----
+{
+  const before = env.state.createCalls.length;
+  r = await dispatch(env, jsonPost('/api/bot/prompt', { clientId: 'qq:rel', text: 'hi', workspacePath: 'dsh-astrbot' }));
+  assert.strictEqual(r.status, 400);
+  assert.strictEqual(JSON.parse(r.body).error.code, 'invalid-workspace-path');
+  assert.strictEqual(env.state.createCalls.length, before, '不应创建会话');
+  console.log('✓ 7d. 相对工作区路径明确报 400');
+}
+
 // ---- 8. 错误路径: 缺令牌 / 缺文本 / prompt 被拒 ----
 {
   r = await dispatch(env, fakeReq({ method: 'POST', url: '/api/bot/prompt', headers: { 'content-type': 'application/json' }, body: Buffer.from(JSON.stringify({ text: 'x' })) }));
