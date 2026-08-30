@@ -216,6 +216,21 @@ function finishTurn(env, res, q, sid, marker) {
 
 const authHeaders = { 'x-bot-token': TOKEN };
 
+async function runPromptToDone(env, body, marker) {
+  const before = env.state.promptCalls.length;
+  const req = jsonPost('/api/bot/prompt', body);
+  const res = fakeRes();
+  const done = env.webServer.match('/api/bot/prompt').handler(req, res);
+  await waitUntil(() => env.state.promptCalls.length === before + 1);
+  const sid = env.state.promptCalls.at(-1).sessionId;
+  const q = env.state.queues.at(-1);
+  await finishTurn(env, res, q, sid, marker);
+  await done;
+  if (!res.writableFinished) await once(res, 'finish').catch(() => {});
+  assert.ok(sseFrames(res.result.body).some((fr) => fr.type === 'done'));
+  return sid;
+}
+
 /* ---------------- 测试 ---------------- */
 
 const env = makeEnv({
@@ -417,6 +432,28 @@ console.log('✓ 1. health 令牌门禁');
   const rr2 = await dispatch(env, jsonPost('/api/bot/reset', { clientId: 'qq:ws' }));
   assert.strictEqual(JSON.parse(rr2.body).forgotten, newId);
   console.log('✓ 7b. 工作区不一致自动换绑新会话');
+}
+
+// ---- 7c. 多实例共享存储: 合并写, 绑定不丢 ----
+{
+  const storePath = path.join(TMP, 'shared-' + Date.now() + '.json');
+  const envA = makeEnv({ botToken: TOKEN, storageFile: storePath, doneQuietMs: 50, maxStreamMs: 5000 });
+  const envB = makeEnv({ botToken: TOKEN, storageFile: storePath, doneQuietMs: 50, maxStreamMs: 5000 });
+  // A 绑定 qq:a 并保存; 此时 B 的内存 store 还是空的(旧快照)
+  await runPromptToDone(envA, { clientId: 'qq:a', text: 'hi' }, 'MARK7C1');
+  // B 绑定 qq:b 并保存(旧快照 + 合并写) → 文件里两个绑定都在
+  await runPromptToDone(envB, { clientId: 'qq:b', text: 'hi' }, 'MARK7C2');
+  let fileData = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+  assert.ok(fileData['qq:a'], 'A 的绑定不应被 B 覆盖');
+  assert.ok(fileData['qq:b'], 'B 的绑定应存在');
+  // A 显式 reset qq:a → 墓碑生效, qq:b 保留
+  const rr = await dispatch(envA, jsonPost('/api/bot/reset', { clientId: 'qq:a' }));
+  assert.strictEqual(JSON.parse(rr.body).forgotten, fileData['qq:a']);
+  fileData = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+  assert.strictEqual(fileData['qq:a'], undefined);
+  assert.ok(fileData['qq:b'], 'reset 一个 key 不应影响其它 key');
+  fs.rmSync(storePath, { force: true });
+  console.log('✓ 7c. 多实例存储合并写, 绑定不丢失');
 }
 
 // ---- 8. 错误路径: 缺令牌 / 缺文本 / prompt 被拒 ----
