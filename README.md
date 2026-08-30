@@ -150,6 +150,10 @@ outcome: allowed-once（放行一次）或 rejected（拒绝）。
 **默认（推荐）：DSH 与机器人后端同机** —— 无需任何网络配置，机器人直接访问
 http://127.0.0.1:3080，bridge 自带令牌认证。
 
+**已有反向代理（Caddy/Nginx/Cloudflare 等）**：如果 DSH 已经通过反代暴露了域名
+（如 https://dsh.example.com），机器人直接经该地址访问即可——bridge 自带令牌认证，
+无需任何隧道或额外配置。
+
 **跨机部署（可选）**：部分 DSH 版本的 CLI 出于安全禁止把 Web 服务绑定到
 0.0.0.0（例如 dsh web --host 0.0.0.0 会被拒绝），此时不要把 DSH 直接暴露到
 局域网，推荐用 SSH 反向隧道把 DSH 端口引到机器人所在机器：
