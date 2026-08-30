@@ -96,6 +96,12 @@ done 判定：本提示词引发的 turn 全部结束且 Agent 进入 idle，静
 
 回答 ask_user_question 提问（answers 与提问帧的 questions 一一对应）。应答后原 SSE 连接继续推流。
 
+### POST /api/bot/cancel
+
+    { "sessionId": "…" }
+
+打断该会话当前正在执行的 turn。
+
 ### POST /api/bot/approve
 
     { "sessionId": "…", "rpcId": "a1", "approvalId": "ap1", "outcome": "allowed-once" }
@@ -107,6 +113,7 @@ outcome: allowed-once（放行一次）或 rejected（拒绝）。
 返回该会话最近的用户/助手文本（默认排除 thinking），供"查看最近结果"。
 
 ### GET /api/bot/session?clientId=…、POST /api/bot/reset、GET /api/bot/health
+
 
 查询绑定会话 / 解绑（下次自动新建）/ 健康检查。
 
@@ -120,4 +127,4 @@ outcome: allowed-once（放行一次）或 rejected（拒绝）。
 
 ## 版本历史
 
-- v0.1.0: 首个版本（/api/bot/* 桥接 API、SSE 非思考流、提问/授权应答、clientId 会话绑定、mock 集成测试）。
+- v0.1.0: 首个版本（/api/bot/* 桥接 API、SSE 非思考流、提问/授权/停止应答、clientId 会话绑定、mock 集成测试）。

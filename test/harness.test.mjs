@@ -65,7 +65,7 @@ function makeEnv(config) {
   };
 
   const state = {
-    createCalls: [], promptCalls: [], historyCalls: [], respondCalls: [],
+    createCalls: [], promptCalls: [], historyCalls: [], respondCalls: [], cancelCalls: [],
     queues: [], sessionSeq: 0,
   };
   const api = {
@@ -77,6 +77,10 @@ function makeEnv(config) {
       },
       async prompt(request) {
         state.promptCalls.push(request.payload);
+        return { rpcId: request.rpcId, result: { ok: true, value: { accepted: true } } };
+      },
+      async cancel(request) {
+        state.cancelCalls.push(request.payload);
         return { rpcId: request.rpcId, result: { ok: true, value: { accepted: true } } };
       },
       async history(request) {
@@ -310,6 +314,14 @@ console.log('✓ 1. health 令牌门禁');
   assert.strictEqual(items[0].role, 'user');
   assert.strictEqual(items[1].text, '你好呀');
   console.log('✓ 6. 历史查询抽取 assistant 文本 (排除 thinking)');
+}
+
+// ---- 6b. cancel ----
+{
+  r = await dispatch(env, jsonPost('/api/bot/cancel', { sessionId: 'session-1' }));
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(env.state.cancelCalls.length, 1);
+  console.log('✓ 6b. cancel 端点');
 }
 
 // ---- 7. reset + session 查询 ----
