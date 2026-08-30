@@ -1,0 +1,5 @@
+# dsh-bot-bridge 的 loader patch (DSH bundle 声明)
+# 顶层 YAML 数组; insert 列表的 id 在组合树内唯一
+- insert:
+    - id: bot-bridge
+      name: dsh-bot-bridge

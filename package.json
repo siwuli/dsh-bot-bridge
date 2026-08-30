@@ -1,0 +1,38 @@
+{
+  "name": "dsh-bot-bridge",
+  "version": "0.1.0",
+  "description": "DSH host plugin: token-authenticated bot bridge API (/api/bot/*). Send prompts into DeepSeek Harness sessions over HTTP and stream the non-thinking output back as Server-Sent Events.",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "bot",
+    "bridge",
+    "sse",
+    "astrbot",
+    "cordis"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "node test/core.test.mjs && node test/harness.test.mjs"
+  }
+}
