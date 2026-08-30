@@ -73,16 +73,17 @@ function makeEnv(config) {
       async create(request) {
         state.createCalls.push(request.payload);
         state.sessionSeq += 1;
-        return { ok: true, value: { sessionId: 'session-' + state.sessionSeq } };
+        return { rpcId: request.rpcId, result: { ok: true, value: { sessionId: 'session-' + state.sessionSeq } } };
       },
       async prompt(request) {
         state.promptCalls.push(request.payload);
-        return { ok: true, value: { accepted: true } };
+        return { rpcId: request.rpcId, result: { ok: true, value: { accepted: true } } };
       },
       async history(request) {
         state.historyCalls.push(request.payload);
         return {
-          ok: true,
+          rpcId: request.rpcId,
+          result: { ok: true,
           value: {
             hasMore: false,
             events: [
@@ -92,7 +93,7 @@ function makeEnv(config) {
                 { type: 'text', text: '你好呀' },
               ] } } } },
             ],
-          },
+          } },
         };
       },
     },
@@ -331,7 +332,7 @@ console.log('✓ 1. health 令牌门禁');
   const origPrompt = env.state.promptCalls;
   const apiProxy = env.ctx.apiProxy;
   const origPromptFn = apiProxy.sessions.prompt;
-  apiProxy.sessions.prompt = async () => ({ ok: false, error: { code: 'agent-busy', message: 'prompt rejected' } });
+  apiProxy.sessions.prompt = async () => ({ rpcId: 'x', result: { ok: false, error: { code: 'agent-busy', message: 'prompt rejected' } } });
   const req = jsonPost('/api/bot/prompt', { clientId: 'qq:4', text: '试试' });
   const res = fakeRes();
   const done = env.webServer.match('/api/bot/prompt').handler(req, res);
